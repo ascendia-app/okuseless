@@ -64,9 +64,10 @@ td {
             margin-left: 20px;
             padding: 40px;
             transition: margin-left 0.3s ease;
+             overflow-y: auto;
         }
         .sidebar.collapsed + .main-content { margin-left: var(--sidebar-collapsed); }
-        .container { max-width: 900px; margin: 0 auto; }
+        .container { max-width: 900px; margin: 0 auto;  overflow-y: auto; }
         header { margin-bottom: 30px; }
         h1 { font-size: 2rem; margin: 0; }
         .exam-form {
