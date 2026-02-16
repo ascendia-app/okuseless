@@ -423,10 +423,10 @@ const scoreInput = document.getElementById('currentQScore');
         updateQuestionNote(); // Show the note if it exists for this specific question
     }
 
- function renderUI() {
+function renderUI() {
     renderQuestion();
 
-    // 1. Render Question Navigation List
+    // 1. Render Question Navigation List in Sidebar
     if (questionList) {
         questionList.innerHTML = "";
         questions.forEach((q, index) => {
@@ -442,21 +442,24 @@ const scoreInput = document.getElementById('currentQScore');
     if (prevBtn) prevBtn.style.visibility = (currentIndex === 0) ? "hidden" : "visible";
     if (nextBtn) nextBtn.style.visibility = (currentIndex === questions.length - 1 || questions.length === 0) ? "hidden" : "visible";
 
-    // 3. MCQ vs Marks Entry Logic
+    // 3. UI Element References
     const mcqWrapper = document.getElementById('mcq-options-wrapper');
     const mcqButtons = document.getElementById('mcq-buttons');
     const marksEntry = document.getElementById('headerMarkEntry');
-    const msBtn = document.getElementById('ms-btn'); // Assuming your Mark Scheme button has this ID
+    
+    // TARGETING YOUR SPECIFIC HTML ID
+    const msBtn = document.getElementById('markSchemeBtn');
 
-    // Subject/Paper Check
-    const isEconMCQ = subjectSelect.value === "9708" && paperSelect.value.includes("3");
+    // 4. Logic Condition for Economics MCQs (9708)
+    const subCode = subjectSelect.value;
+    const isEconMCQ = (subCode === "9708"); 
 
     if (isEconMCQ) {
-        // Show MCQ Options, Hide Marks Entry
+        // --- MCQ MODE ---
         if (mcqWrapper) mcqWrapper.style.display = "block";
         if (marksEntry) marksEntry.style.display = "none";
 
-        // Generate A, B, C, D Buttons
+        // Generate MCQ Buttons (A, B, C, D)
         if (mcqButtons) {
             mcqButtons.innerHTML = ['A', 'B', 'C', 'D'].map(letter => `
                 <button onclick="saveMCQAnswer('${letter}')" 
@@ -472,12 +475,17 @@ const scoreInput = document.getElementById('currentQScore');
             `).join('');
         }
 
-        // --- ECONOMICS "SHOW ANSWER" BUTTON LOGIC ---
+        // --- CHANGE MARK SCHEME BTN TO "SHOW ANSWER" ---
         if (msBtn) {
             msBtn.innerHTML = `<i class="fas fa-lightbulb"></i> Show Answer`;
-            msBtn.onclick = () => {
+            msBtn.onclick = (e) => {
+                // Prevent modal from opening
+                if (e) e.preventDefault(); 
+
                 const activeQuestions = window.questions || questions;
                 const currentQ = activeQuestions[currentIndex];
+                
+                // Get Paper ID from the Image Path
                 const fullPath = currentQ.img || currentQ.images[0];
                 const fileName = fullPath.split('/').pop();
                 const paperID = fileName.replace(/_q\d+.*\.png$/i, '');
@@ -492,22 +500,22 @@ const scoreInput = document.getElementById('currentQScore');
                     const correctAns = correctKeyString[currentIndex];
                     alert(`The correct answer for Question ${currentQ.number} is: ${correctAns}`);
                 } else {
-                    alert("Answer key not found for this Econ paper.");
+                    alert("Answer key not found for this Econ paper in DATABASE.");
                 }
             };
         }
 
     } else {
-        // Show Marks Entry, Hide MCQ Options
+        // --- STANDARD MODE (Maths/Psych) ---
         if (mcqWrapper) mcqWrapper.style.display = "none";
         if (marksEntry) marksEntry.style.display = "flex";
 
-        // Restore Default Mark Scheme Button Behavior
+        // Restore Standard Mark Scheme behavior
         if (msBtn) {
-            msBtn.innerHTML = `<i class="fas fa-file-invoice"></i> Mark Scheme`;
+            msBtn.innerHTML = `<i class="fas fa-eye"></i> Show Mark Scheme`;
             msBtn.onclick = () => {
                 const activeQuestions = window.questions || questions;
-                if (activeQuestions[currentIndex]) {
+                if (activeQuestions[currentIndex] && typeof showMarkSchemeModal === "function") {
                     showMarkSchemeModal(activeQuestions[currentIndex].markImages);
                 }
             };
