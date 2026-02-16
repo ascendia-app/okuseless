@@ -565,9 +565,10 @@ const startLoadingProcess = () => {
     const pCode = (paperMap[paperVal] || paperVal) + variantSelect.value;
     const yCode = (seasonSelect.value === "febmar" ? "m" : seasonSelect.value === "mayjun" ? "s" : "w") + yearSelect.value.slice(-2);
 
-    const CLOUD_NAME = "daiieadws"; 
-    const TARGET_FOLDER = "";
-    const BASE_URL = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/f_auto,q_auto/${TARGET_FOLDER}/`;
+   const CLOUD_NAME = "daiieadws"; 
+const TARGET_FOLDER = ""; // Keep this empty if images are in root
+// We remove the trailing slash to prevent double slashes //
+const BASE_URL = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/f_auto,q_auto`;
 
     questions = [];
     let qNum = 1;
@@ -581,7 +582,7 @@ const startLoadingProcess = () => {
             const char = partLetters[partIndex];
             const fileName = `${subjectSelect.value}_${yCode}_qp_${pCode}_q${qNum}${char}.png`;
             const msName = `${subjectSelect.value}_${yCode}_ms_${pCode}_q${qNum}${char}.png`;
-            
+            console.log("Checking for image at:", qPath); // ADD THIS LINE
             const qPath = `${BASE_URL}${fileName}`;
             const mPath = `${BASE_URL}${msName}`;
 
