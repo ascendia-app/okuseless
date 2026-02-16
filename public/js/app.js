@@ -566,7 +566,7 @@ const startLoadingProcess = () => {
     const yCode = (seasonSelect.value === "febmar" ? "m" : seasonSelect.value === "mayjun" ? "s" : "w") + yearSelect.value.slice(-2);
 
     const CLOUD_NAME = "daiieadws"; 
-    const TARGET_FOLDER = "qbyq_images";
+    const TARGET_FOLDER = "";
     const BASE_URL = `https://res.cloudinary.com/${CLOUD_NAME}/image/upload/f_auto,q_auto/${TARGET_FOLDER}/`;
 
     questions = [];
