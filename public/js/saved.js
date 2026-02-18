@@ -142,14 +142,7 @@ function initLibrary() {
       savedGrid.appendChild(card);
     });
   }
-  window.removeSaved = function (index) {
-    return;
-    let saved = JSON.parse(localStorage.getItem('savedQuestions')) || [];
-    saved.splice(index, 1);
-    localStorage.setItem('savedQuestions', JSON.stringify(saved));
-    renderSavedQuestions();
-    if (typeof checkEmpty === "function") checkEmpty();
-  };
+ 
   window.practiceQuestion = lookupKey => {
     console.log("Practice clicked for Key/ID:", lookupKey);
     const saved = JSON.parse(localStorage.getItem('savedQuestions')) || [];
@@ -211,98 +204,97 @@ function initLibrary() {
       console.error("No question found at index:", index);
     }
   };
-  window.openPreview = async index => {
+window.openPreview = async (index) => {
     const q = savedQuestions[index];
     if (!q) return;
+
     const displayNum = q.questionNum || q.number || (q.index !== undefined ? q.index + 1 : "??");
     modalTitle.textContent = `Review: Q${displayNum}`;
-    const isEcon = q.subjectVal === "9708" || q.paperInfo && q.paperInfo.startsWith("9708");
-    const modalNoteContainer = document.getElementById('modalNote');
-    if (modalNoteContainer) {
-      modalNoteContainer.style.display = q.note ? 'block' : 'none';
-      if (q.note) {
-        modalNoteContainer.innerHTML = `
-                <div style="background: #fdf2f2; border-left: 5px solid #ef4444; padding: 12px; margin-bottom: 20px; border-radius: 4px;">
-                    <small style="color:#b91c1c; font-weight:bold; display:block; margin-bottom:4px; text-transform: uppercase;">Note</small>
-                    <p style="margin:0; color:#1e293b; font-size:0.95rem;">${q.note}</p>
-                </div>`;
-      }
-    }
+
+    const isEcon = q.subjectVal === "9708" || (q.paperInfo && q.paperInfo.startsWith("9708"));
+
+    // UI Reset
     modalImages.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
     modalMS.innerHTML = '';
-    const msToggleContainer = document.querySelector('.ms-toggle-container');
-    if (isEcon) {
-      modalMS.style.display = 'none';
-      if (msToggleContainer) msToggleContainer.style.display = 'none';
-    } else {
-      if (msToggleContainer) msToggleContainer.style.display = 'block';
-    }
+    
     let baseFileName = "";
     if (q.img) {
-      baseFileName = q.img.split('/').pop().replace(/[a-z]?\.(png|PNG|jpg|JPG)$/i, '');
+        // Extract filename and strip extension
+        const raw = q.img.split('/').pop();
+        baseFileName = raw.replace(/[a-z]?\.(png|PNG|jpg|JPG)$/i, '');
     } else {
-      const sMap = {
-        'febmar': 'm',
-        'mayjun': 's',
-        'octnov': 'w'
-      };
-      const sCode = sMap[q.season] || 'm';
-      const yCode = q.year ? q.year.toString().slice(-2) : '25';
-      let pNum = (q.paper || '1').toString().replace(/[a-zA-Z]/g, '');
-      let vNum = q.variant ? q.variant.toString().replace('v', '') : '1';
-      baseFileName = `${q.subjectVal}_${sCode}${yCode}_qp_${pNum}${vNum}_q${displayNum}`;
+        const sMap = { 'febmar': 'm', 'mayjun': 's', 'octnov': 'w' };
+        const sCode = sMap[q.season] || 's';
+        const yCode = q.year ? q.year.toString().slice(-2) : '25';
+        const pNum = (q.paper || '1').toString().replace(/[a-zA-Z]/g, ''); 
+        const vNum = q.variant ? q.variant.toString().replace('v', '') : '1';
+        baseFileName = `${q.subjectVal}_${sCode}${yCode}_qp_${pNum}${vNum}_q${displayNum}`;
     }
+
     const subParts = ["", "a", "b", "c", "d"];
     let foundAnything = false;
+
     for (const char of subParts) {
-      img.onerror = () => {
-        if (img.src.includes('.png')) {
-          img.src = img.src.replace('.png', '.PNG');
-        } else {
-          reject();
+        // We try .png first (lowercase)
+        const currentFileName = `${baseFileName}${char}.png`;
+        const fullURL = getCloudinaryPath(currentFileName);
+        
+        try {
+            await new Promise((resolve, reject) => {
+                const testImg = new Image(); // Using testImg to avoid name collisions
+                
+                testImg.onload = () => {
+                    if (!foundAnything) { modalImages.innerHTML = ''; foundAnything = true; }
+                    
+                    const qImg = document.createElement('img');
+                    qImg.src = testImg.src;
+                    qImg.className = "preview-img";
+                    qImg.style.width = "100%";
+                    qImg.style.marginBottom = "10px";
+                    modalImages.appendChild(qImg);
+
+                    // Handle Mark Scheme
+                    if (!isEcon) {
+                        const msFileName = currentFileName.replace('_qp_', '_ms_');
+                        const msURL = getCloudinaryPath(msFileName);
+                        const msTest = new Image();
+                        msTest.onload = () => {
+                            const msDisplay = document.createElement('img');
+                            msDisplay.src = msTest.src;
+                            msDisplay.className = "preview-ms-img";
+                            msDisplay.style.width = "100%";
+                            modalMS.appendChild(msDisplay);
+                        };
+                        msTest.src = msURL;
+                    }
+                    resolve();
+                };
+
+                testImg.onerror = () => {
+                    // FALLBACK: If .png fails, try .PNG (Cloudinary is case-sensitive)
+                    if (testImg.src.includes('.png')) {
+                        testImg.src = testImg.src.replace('.png', '.PNG');
+                    } else {
+                        reject(); // Truly not found
+                    }
+                };
+
+                testImg.src = fullURL;
+            });
+        } catch (e) { 
+            // This part (a, b, c, or d) doesn't exist, move to next
         }
-      };
-      const fullURL = getCloudinaryPath(currentFileName);
-      try {
-        await new Promise((resolve, reject) => {
-          const img = new Image();
-          img.onload = () => {
-            if (!foundAnything) {
-              modalImages.innerHTML = '';
-              foundAnything = true;
-            }
-            const qImg = document.createElement('img');
-            qImg.src = img.src;
-            qImg.className = "preview-img";
-            qImg.style.width = "100%";
-            qImg.style.marginBottom = "10px";
-            modalImages.appendChild(qImg);
-            if (!isEcon) {
-              const msFileName = currentFileName.replace('_qp_', '_ms_');
-              const msURL = getCloudinaryPath(msFileName);
-              const mImg = new Image();
-              mImg.onload = () => {
-                const msDisplay = document.createElement('img');
-                msDisplay.src = mImg.src;
-                msDisplay.className = "preview-ms-img";
-                msDisplay.style.width = "100%";
-                msDisplay.style.marginBottom = "10px";
-                modalMS.appendChild(msDisplay);
-              };
-              mImg.src = msURL;
-            }
-            resolve();
-          };
-          img.onerror = reject;
-          img.src = fullURL;
-        });
-      } catch (e) {}
     }
+
     if (!foundAnything) {
-      modalImages.innerHTML = `<div class="error" style="padding:20px; color:#ef4444;">Question Image Not Found in Cloudinary Folders.</div>`;
+        modalImages.innerHTML = `<div class="error" style="padding:20px; color:#ef4444; text-align:center;">
+            <i class="fas fa-exclamation-circle"></i><br>Image Not Found<br>
+            <small style="color: #64748b">${baseFileName}</small>
+        </div>`;
     }
+
     previewModal.style.display = "block";
-  };
+};
   if (toggleMSBtn) {
     toggleMSBtn.onclick = e => {
       e.preventDefault();
@@ -364,3 +356,29 @@ function initLibrary() {
   checkEmpty();
 }
 document.addEventListener("DOMContentLoaded", verifyAccess);
+window.removeSaved = function(index) {
+    // 1. Get latest data from storage
+    let saved = JSON.parse(localStorage.getItem('savedQuestions')) || [];
+    
+    // 2. Remove the specific item
+    saved.splice(index, 1);
+    
+    // 3. Save back to storage
+    localStorage.setItem('savedQuestions', JSON.stringify(saved));
+    
+    // 4. IMPORTANT: Sync the global variable used by other functions
+    // This prevents "Preview" from opening the wrong question after a delete
+    if (typeof savedQuestions !== 'undefined') {
+        savedQuestions = saved; 
+    }
+    
+    // 5. Refresh the UI
+    if (typeof renderSavedQuestions === "function") {
+        renderSavedQuestions();
+    } else {
+        window.location.reload();
+    }
+    
+    // 6. Update empty state visibility
+    if (typeof checkEmpty === "function") checkEmpty();
+};
