@@ -267,33 +267,23 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 function getCloudinaryPath(fileName) {
     if (!fileName) return "";
-    
-    // 1. Clean the input
     const cleanName = fileName.trim().replace(/[\n\r]/g, "");
-    
-    // If it's already a full URL, just return it
     if (cleanName.includes('http')) return cleanName;
 
-    // 2. Ensure it has an extension (default to .png if missing)
+    const parts = cleanName.split('_'); 
     const finalFileName = cleanName.includes('.') ? cleanName : `${cleanName}.png`;
 
-    // 3. Extract parts for the folder path
-    const parts = cleanName.split('_'); 
-    
-    // If the filename doesn't have at least 4 parts, it's not following the folder pattern
+    // ADD THIS: Cloudinary transformations
+    // f_auto = automatic format (WebP/Avif)
+    // q_auto = automatic quality compression
+    const transform = "f_auto,q_auto";
+
     if (parts.length < 4) {
-        return `https://res.cloudinary.com/daiieadws/image/upload/f_auto,q_auto/${finalFileName}`;
+        return `https://res.cloudinary.com/daiieadws/image/upload/${transform}/${finalFileName}`;
     }
 
-    const subject = parts[0]; // 9709
-    const series  = parts[1]; // s25
-    const type    = parts[2]; // qp
-    const version = parts[3]; // 32
-    const base    = "qbyq_images";
-    
-    // 4. Return the optimized folder path URL
-    // Added f_auto,q_auto to make your images load faster!
-    return `https://res.cloudinary.com/daiieadws/image/upload/f_auto,q_auto/${base}/${subject}/${series}/${type}/${version}/${finalFileName}`;
+    const path = `qbyq_images/${parts[0]}/${parts[1]}/${parts[2]}/${parts[3]}`;
+    return `https://res.cloudinary.com/daiieadws/image/upload/${transform}/${path}/${finalFileName}`;
 }
 function renderQuestion() {
   if (!questions[currentIndex]) return;
@@ -476,6 +466,20 @@ function renderUI() {
     }
   }
   saveState();
+}
+function preloadNextQuestions(index, count = 3) {
+    for (let i = 1; i <= count; i++) {
+        const nextQ = questions[index + i];
+        if (nextQ && nextQ.images) {
+            nextQ.images.forEach(imgName => {
+                const link = document.createElement('link');
+                link.rel = 'preload';
+                link.as = 'image';
+                link.href = getCloudinaryPath(imgName);
+                document.head.appendChild(link);
+            });
+        }
+    }
 }
 /**
  * Global function to save MCQ choices
