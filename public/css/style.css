@@ -472,21 +472,39 @@ body {
     overflow-x: hidden;
     flex-shrink: 0;
 }
-.question-image {
-    min-height: 200px;
-    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-    background-size: 200% 100%;
-    animation: loading 1.5s infinite;
-}
 
-@keyframes loading {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
-}
 .sidebar::-webkit-scrollbar {
     width: 5px;
 }
+.preview-img-wrapper {
+    width: 100%;
+    min-height: 250px;
+    margin-bottom: 15px;
+    border-radius: 8px;
+    background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+    background-size: 200% 100%;
+    animation: preview-pulse 1.5s infinite;
+    overflow: hidden;
+}
 
+@keyframes preview-pulse {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.preview-img, .preview-ms-img {
+    display: block;
+    width: 100%;
+    opacity: 0;
+    transition: opacity 0.3s ease-in;
+}
+
+/* When loaded, this class removes the pulse */
+.preview-img-wrapper.loaded {
+    animation: none;
+    background: transparent;
+    min-height: auto;
+}
 .sidebar::-webkit-scrollbar-thumb {
     background: rgba(0, 0, 0, 0.1);
     border-radius: 10px;
@@ -2428,12 +2446,7 @@ body.auth-page {
 }
 
 /* 3. Ensure the loading text doesn't shrink the modal */
-.loading {
-    padding: 50px;
-    text-align: center;
-    font-weight: bold;
-    color: #64748b;
-}
+
 
 /* =========================================
    8. RESPONSIVE MEDIA QUERIES

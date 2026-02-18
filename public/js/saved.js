@@ -207,95 +207,124 @@ function initLibrary() {
       console.error("No question found at index:", index);
     }
   };
-window.openPreview = async (index) => {
+window.openPreview = (index) => {
     const q = savedQuestions[index];
     if (!q) return;
 
-    // Reset UI
+    // 1. OPEN MODAL INSTANTLY
+    previewModal.style.display = "block";
+
+    // 2. SETUP UI HEADERS
     const displayNum = q.questionNum || q.number || (q.index !== undefined ? q.index + 1 : "??");
     modalTitle.textContent = `Review: Q${displayNum}`;
-    modalImages.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+    
+    // Reset Containers
+    modalImages.innerHTML = '';
     modalMS.innerHTML = '';
+    modalMS.style.display = "none";
+    if (toggleMSBtn) toggleMSBtn.textContent = 'Show Mark Scheme';
 
-    // Build the same ID structure as app.js
+    // 3. BUILD FILENAME METADATA (Sync with app.js)
     const subjectCode = q.subjectVal || (q.paperInfo ? q.paperInfo.split('_')[0] : "9708");
     const sMap = { 'febmar': 'm', 'mayjun': 's', 'octnov': 'w' };
     const sCode = sMap[q.season] || 's';
     const yCode = q.year ? q.year.toString().slice(-2) : '24';
     const pNum = (q.paper || '1').toString().replace(/[a-zA-Z]/g, ''); 
     const vNum = q.variant ? q.variant.toString().replace('v', '') : '1';
-    
-    // Base name: 9709_m25_qp_32_q1
     const baseFileName = `${subjectCode}_${sCode}${yCode}_qp_${pNum}${vNum}_q${displayNum}`;
 
     const subParts = ["", "a", "b", "c", "d"];
     let foundAnything = false;
 
-    for (const char of subParts) {
+    // 4. FETCH IMAGES ASYNCHRONOUSLY (No 'await' here so modal stays open)
+    subParts.forEach(char => {
         const imgRef = `${baseFileName}${char}`;
+        const url = getCloudinaryPath(imgRef);
+
+        // Create Wrapper with Pulse
+        const wrapper = document.createElement('div');
+        wrapper.className = "preview-img-wrapper";
+        modalImages.appendChild(wrapper);
+
+        const img = new Image();
+        img.src = url;
+        img.className = "preview-img";
+
+        img.onload = () => {
+            foundAnything = true;
+            wrapper.classList.add('loaded'); // Stop Pulse
+            img.style.opacity = "1"; // Fade in
+            wrapper.appendChild(img);
+
+            // Handle MS if not Econ
+            if (subjectCode !== "9708") {
+                loadMSPart(imgRef, char);
+            }
+        };
+
+        img.onerror = () => {
+            // App.js Fallback Logic
+            if (img.src.includes('qbyq_images')) {
+                img.src = `https://res.cloudinary.com/daiieadws/image/upload/${imgRef}.png`;
+            } else if (!img.src.includes('.PNG') && img.src.includes('.png')) {
+                img.src = img.src.replace('.png', '.PNG');
+            } else {
+                // Truly not found - remove this pulse wrapper
+                wrapper.remove();
+                checkIfEmptyAfterLoad();
+            }
+        };
+    });
+
+    // Helper to load MS parts into the hidden MS container
+    function loadMSPart(imgRef, char) {
+        const msRef = imgRef.replace('_qp_', '_ms_');
+        const msImg = new Image();
+        msImg.src = getCloudinaryPath(msRef);
         
-        try {
-            await new Promise((resolve, reject) => {
-                const img = new Image();
-                img.src = getCloudinaryPath(imgRef);
-                
-                img.onload = () => {
-                    if (!foundAnything) { modalImages.innerHTML = ''; foundAnything = true; }
-                    const qImg = document.createElement('img');
-                    qImg.src = img.src;
-                    qImg.className = "preview-img";
-                    qImg.style.width = "100%";
-                    qImg.style.marginBottom = "15px";
-                    modalImages.appendChild(qImg);
+        const msWrapper = document.createElement('div');
+        msWrapper.className = "preview-img-wrapper"; // Pulse for MS too
+        modalMS.appendChild(msWrapper);
 
-                    // Load Mark Scheme if not Econ
-                    if (subjectCode !== "9708") {
-                        const msRef = imgRef.replace('_qp_', '_ms_');
-                        const msImg = new Image();
-                        msImg.src = getCloudinaryPath(msRef);
-                        msImg.onload = () => {
-                            const msDisplay = document.createElement('img');
-                            msDisplay.src = msImg.src;
-                            msDisplay.className = "preview-ms-img";
-                            msDisplay.style.width = "100%";
-                            modalMS.appendChild(msDisplay);
-                        };
-                    }
-                    resolve();
-                };
-
-                img.onerror = () => {
-                    // This is the logic from your app.js that makes it work!
-                    if (img.src.includes('qbyq_images')) {
-                        // Fallback: Try root if folder path fails
-                        img.src = `https://res.cloudinary.com/daiieadws/image/upload/${imgRef}.png`;
-                    } else if (!img.src.includes('.PNG') && img.src.includes('.png')) {
-                        // Extra Fallback for Case Sensitivity
-                        img.src = img.src.replace('.png', '.PNG');
-                    } else {
-                        reject(); 
-                    }
-                };
-            });
-        } catch (e) { /* Part not found, continue */ }
+        msImg.onload = () => {
+            msWrapper.classList.add('loaded');
+            msImg.className = "preview-ms-img";
+            msImg.style.opacity = "1";
+            msWrapper.appendChild(msImg);
+        };
+        msImg.onerror = () => {
+            if (msImg.src.includes('qbyq_images')) {
+                msImg.src = `https://res.cloudinary.com/daiieadws/image/upload/${msRef}.png`;
+            } else {
+                msWrapper.remove();
+            }
+        };
     }
 
-    if (!foundAnything) {
-        modalImages.innerHTML = `<div class="error" style="text-align:center; padding:20px; color:#ef4444;">
-            <i class="fas fa-exclamation-triangle"></i> Image Not Found in Folders or Root.
-        </div>`;
+    function checkIfEmptyAfterLoad() {
+        setTimeout(() => {
+            if (!foundAnything && modalImages.querySelectorAll('.preview-img-wrapper').length === 0) {
+                modalImages.innerHTML = `<div style="text-align:center; padding:20px; color:#ef4444;">Image Not Found</div>`;
+            }
+        }, 3000); // Give it 3 seconds to try all parts
     }
-
-    previewModal.style.display = "block";
 };
-  if (toggleMSBtn) {
-    toggleMSBtn.onclick = e => {
-      e.preventDefault();
-      const isHidden = modalMS.style.display === 'none';
-      modalMS.style.display = isHidden ? 'block' : 'none';
-      toggleMSBtn.textContent = isHidden ? 'Hide Mark Scheme' : 'Show Mark Scheme';
+if (toggleMSBtn) {
+    toggleMSBtn.onclick = (e) => {
+        e.preventDefault();
+        const isHidden = modalMS.style.display === "none";
+        
+        if (isHidden) {
+            modalMS.style.display = "block";
+            toggleMSBtn.innerHTML = `<i class="fas fa-eye-slash"></i> Hide Mark Scheme`;
+            toggleMSBtn.style.background = "#64748b"; 
+        } else {
+            modalMS.style.display = "none";
+            toggleMSBtn.innerHTML = `<i class="fas fa-eye"></i> Show Mark Scheme`;
+            toggleMSBtn.style.background = "";
+        }
     };
-  }
+}
   if (toggleSidebar) {
     toggleSidebar.onclick = () => {
       sidebar.classList.toggle("collapsed");

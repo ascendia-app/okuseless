@@ -119,7 +119,7 @@
                     <option value="3">v3</option>
                 </select>
                 <button id="loadPaperBtn" class="primary">Load Paper</button>
-                <button id="toggleMF19Btn" class="secondary-btn"
+                <button id="MF19Btn" class="secondary-btn"
                     style="border-color: var(--teal); color: var(--teal); margin-left: 10px;">
                     <i class="fas fa-file-pdf"></i> Show MF19
                 </button>
@@ -227,6 +227,21 @@
 <style>
     .question-container {
     margin-bottom: 20px; /* Forces space between the image and the buttons */
+}
+#markSchemeViewer {
+    display: none; /* Hidden by default */
+    width: 100%;
+    margin-top: 20px;
+    border-top: 2px solid var(--border);
+    padding-top: 20px;
+}
+
+.markscheme-image {
+    max-width: 100%;
+    display: block;
+    margin: 0 auto 15px auto;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
 }
 
 #mcq-options-wrapper {
