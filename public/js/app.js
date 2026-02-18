@@ -375,6 +375,7 @@ function renderQuestion() {
 function renderUI() {
   renderQuestion(); 
 
+  // 1. Sidebar Navigation
   if (questionList) {
     questionList.innerHTML = "";
     questions.forEach((q, index) => {
@@ -386,43 +387,29 @@ function renderUI() {
     });
   }
 
+  // 2. Nav Buttons
   if (prevBtn) prevBtn.style.visibility = currentIndex === 0 ? "hidden" : "visible";
   if (nextBtn) nextBtn.style.visibility = currentIndex === questions.length - 1 || questions.length === 0 ? "hidden" : "visible";
 
+  // 3. UI References
   const mcqWrapper = document.getElementById('mcq-options-wrapper');
   const mcqButtons = document.getElementById('mcq-buttons');
   const marksEntry = document.getElementById('headerMarkEntry');
   const msBtn = document.getElementById('markSchemeBtn');
-  const mf19Btn = document.getElementById('toggleMF19Btn');
-
-  const isMath = subCode === "9709"; // Only true for Math
+  const mf19Btn = document.getElementById('toggleMF19Btn'); // Reference to MF19 Button
 
   const subCode = subjectSelect.value;
+  const isMath = subCode === "9709"; // Logic for Math
   const isEconMCQ = subCode === "9708";
-if (mf19Btn) {
-    // Show only for Math, hide for Psychology (9990) and Economics (9708)
+
+  // --- MF19 VISIBILITY LOGIC ---
+  if (mf19Btn) {
+    // Show only for Math (9709), hide for Econ (9708) and Psych (9990)
     mf19Btn.style.display = isMath ? "inline-flex" : "none";
   }
 
   if (isEconMCQ) {
     // --- ECONOMICS MODE ---
-    if (mcqWrapper) mcqWrapper.style.display = "block";
-    if (marksEntry) marksEntry.style.display = "none";
-    
-    // ... (Keep your MCQ button/Show Answer logic here) ...
-
-  } else {
-    // --- MATH / PSYCH MODE ---
-    if (mcqWrapper) mcqWrapper.style.display = "none";
-    if (marksEntry) marksEntry.style.display = "flex";
-
-    if (msBtn && markSchemeViewer) {
-      // ... (Keep your Mark Scheme toggle logic here) ...
-    }
-  }
-  
-
-  if (isEconMCQ) {
     if (mcqWrapper) mcqWrapper.style.display = "block";
     if (marksEntry) marksEntry.style.display = "none";
 
@@ -452,6 +439,7 @@ if (mf19Btn) {
       };
     }
   } else {
+    // --- MATH / PSYCH MODE ---
     if (mcqWrapper) mcqWrapper.style.display = "none";
     if (marksEntry) marksEntry.style.display = "flex";
 
