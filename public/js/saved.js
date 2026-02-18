@@ -1,15 +1,22 @@
 function getCloudinaryPath(fileName) {
-  if (!fileName) return "";
-  const cleanName = fileName.trim().replace(/[\n\r]/g, "");
-  if (cleanName.includes('http')) return cleanName;
-  const parts = cleanName.split('_');
-  if (parts.length < 4) return `https://res.cloudinary.com/daiieadws/image/upload/${cleanName}`;
-  const subject = parts[0];
-  const series = parts[1];
-  const type = parts[2];
-  const version = parts[3];
-  const base = "qbyq_images";
-  return `https://res.cloudinary.com/daiieadws/image/upload/f_auto,q_auto/${base}/${subject}/${series}/${type}/${version}/${cleanName}`;
+    if (!fileName) return "";
+    const cleanName = fileName.trim().replace(/[\n\r]/g, "");
+    if (cleanName.includes('http')) return cleanName;
+
+    const parts = cleanName.split('_'); 
+    const finalFileName = cleanName.includes('.') ? cleanName : `${cleanName}.png`;
+
+    // ADD THIS: Cloudinary transformations
+    // f_auto = automatic format (WebP/Avif)
+    // q_auto = automatic quality compression
+    const transform = "f_auto,q_auto";
+
+    if (parts.length < 4) {
+        return `https://res.cloudinary.com/daiieadws/image/upload/${transform}/${finalFileName}`;
+    }
+
+    const path = `qbyq_images/${parts[0]}/${parts[1]}/${parts[2]}/${parts[3]}`;
+    return `https://res.cloudinary.com/daiieadws/image/upload/${transform}/${path}/${finalFileName}`;
 }
 async function verifyAccess() {
   let token = localStorage.getItem("token");
@@ -234,58 +241,38 @@ window.openPreview = async (index) => {
     const subParts = ["", "a", "b", "c", "d"];
     let foundAnything = false;
 
-    for (const char of subParts) {
-        // We try .png first (lowercase)
-        const currentFileName = `${baseFileName}${char}.png`;
-        const fullURL = getCloudinaryPath(currentFileName);
-        
-        try {
-            await new Promise((resolve, reject) => {
-                const testImg = new Image(); // Using testImg to avoid name collisions
-                
-                testImg.onload = () => {
-                    if (!foundAnything) { modalImages.innerHTML = ''; foundAnything = true; }
-                    
-                    const qImg = document.createElement('img');
-                    qImg.src = testImg.src;
-                    qImg.className = "preview-img";
-                    qImg.style.width = "100%";
-                    qImg.style.marginBottom = "10px";
-                    modalImages.appendChild(qImg);
+   // Inside your window.openPreview loop:
+for (const char of subParts) {
+    // Send only the name, let getCloudinaryPath handle the extension and path
+    const currentNameOnly = `${baseFileName}${char}`; 
+    const fullURL = getCloudinaryPath(currentNameOnly);
+    
+    console.log("Testing URL:", fullURL); // This will show you exactly why it fails or works
 
-                    // Handle Mark Scheme
-                    if (!isEcon) {
-                        const msFileName = currentFileName.replace('_qp_', '_ms_');
-                        const msURL = getCloudinaryPath(msFileName);
-                        const msTest = new Image();
-                        msTest.onload = () => {
-                            const msDisplay = document.createElement('img');
-                            msDisplay.src = msTest.src;
-                            msDisplay.className = "preview-ms-img";
-                            msDisplay.style.width = "100%";
-                            modalMS.appendChild(msDisplay);
-                        };
-                        msTest.src = msURL;
-                    }
-                    resolve();
-                };
-
-                testImg.onerror = () => {
-                    // FALLBACK: If .png fails, try .PNG (Cloudinary is case-sensitive)
-                    if (testImg.src.includes('.png')) {
-                        testImg.src = testImg.src.replace('.png', '.PNG');
-                    } else {
-                        reject(); // Truly not found
-                    }
-                };
-
-                testImg.src = fullURL;
-            });
-        } catch (e) { 
-            // This part (a, b, c, or d) doesn't exist, move to next
-        }
-    }
-
+    try {
+        await new Promise((resolve, reject) => {
+            const testImg = new Image();
+            testImg.onload = () => {
+                if (!foundAnything) { modalImages.innerHTML = ''; foundAnything = true; }
+                const qImg = document.createElement('img');
+                qImg.src = testImg.src;
+                qImg.className = "preview-img";
+                qImg.style.width = "100%";
+                modalImages.appendChild(qImg);
+                resolve();
+            };
+            testImg.onerror = () => {
+                // Try Uppercase PNG if lowercase fails
+                if (!testImg.src.includes('.PNG')) {
+                    testImg.src = testImg.src.replace('.png', '.PNG');
+                } else {
+                    reject();
+                }
+            };
+            testImg.src = fullURL;
+        });
+    } catch (e) { /* skip */ }
+}
     if (!foundAnything) {
         modalImages.innerHTML = `<div class="error" style="padding:20px; color:#ef4444; text-align:center;">
             <i class="fas fa-exclamation-circle"></i><br>Image Not Found<br>
