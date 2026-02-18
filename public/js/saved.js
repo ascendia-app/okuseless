@@ -17,6 +17,25 @@ async function verifyAccess() {
 /**
  * 2. MAIN UI INITIALIZATION
  */
+
+function getCloudinaryPath(fileName) {
+    if (!fileName) return "";
+    const cleanName = fileName.trim().replace(/[\n\r]/g, "");
+    if (cleanName.includes('http')) return cleanName;
+
+    const parts = cleanName.split('_'); 
+    // parts[0]=9709, parts[1]=s25, parts[2]=qp, parts[3]=32
+    if (parts.length < 4) return `https://res.cloudinary.com/daiieadws/image/upload/${cleanName}`;
+
+    const subject = parts[0];
+    const series = parts[1];
+    const type = parts[2];
+    const version = parts[3];
+    const base = "qbyq_images";
+    
+    // Using f_auto,q_auto for faster preview loading
+    return `https://res.cloudinary.com/daiieadws/image/upload/f_auto,q_auto/${base}/${subject}/${series}/${type}/${version}/${cleanName}`;
+}
 function initLibrary() {
     /* --- UI ELEMENTS --- */
     const savedGrid = document.getElementById('savedGrid');
@@ -222,14 +241,11 @@ window.openPreview = async (index) => {
     const q = savedQuestions[index];
     if (!q) return;
 
-    // 1. ROBUST NUMBER FALLBACK
     const displayNum = q.questionNum || q.number || (q.index !== undefined ? q.index + 1 : "??");
     modalTitle.textContent = `Review: Q${displayNum}`;
 
-    // 2. IDENTIFY SUBJECT
     const isEcon = q.subjectVal === "9708" || (q.paperInfo && q.paperInfo.startsWith("9708"));
 
-    // 3. HANDLE NOTE
     const modalNoteContainer = document.getElementById('modalNote');
     if (modalNoteContainer) {
         modalNoteContainer.style.display = q.note ? 'block' : 'none';
@@ -245,8 +261,7 @@ window.openPreview = async (index) => {
     modalImages.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
     modalMS.innerHTML = '';
     
-    // 4. HIDE MARKSCHEME FOR ECON
-    const msToggleContainer = document.querySelector('.ms-toggle-container'); // Or whatever your MS button/tab container is
+    const msToggleContainer = document.querySelector('.ms-toggle-container'); 
     if (isEcon) {
         modalMS.style.display = 'none';
         if (msToggleContainer) msToggleContainer.style.display = 'none';
@@ -254,24 +269,27 @@ window.openPreview = async (index) => {
         if (msToggleContainer) msToggleContainer.style.display = 'block';
     }
 
-    // 5. PATH & IMAGE LOADING
-    let qFileBase = "";
+    // --- UPDATED IMAGE LOADING LOGIC ---
+    let baseFileName = "";
     if (q.img) {
-        qFileBase = q.img.replace(/[a-z]?\.(png|PNG)$/i, '');
+        // Remove existing extension and 'a/b/c' suffix to re-build correctly
+        baseFileName = q.img.split('/').pop().replace(/[a-z]?\.(png|PNG|jpg|JPG)$/i, '');
     } else {
         const sMap = { 'febmar': 'm', 'mayjun': 's', 'octnov': 'w' };
         const sCode = sMap[q.season] || 'm';
         const yCode = q.year ? q.year.toString().slice(-2) : '25';
         let pNum = (q.paper || '1').toString().replace(/[a-zA-Z]/g, ''); 
         let vNum = q.variant ? q.variant.toString().replace('v', '') : '1';
-        qFileBase = `images/${q.subjectVal}_${sCode}${yCode}_qp_${pNum}${vNum}_q${displayNum}`;
+        baseFileName = `${q.subjectVal}_${sCode}${yCode}_qp_${pNum}${vNum}_q${displayNum}`;
     }
 
-    const parts = ["", "a", "b", "c", "d"];
+    const subParts = ["", "a", "b", "c", "d"];
     let foundAnything = false;
 
-    for (const char of parts) {
-        const fullPath = `${qFileBase}${char}.PNG`;
+    for (const char of subParts) {
+        const currentFileName = `${baseFileName}${char}.png`;
+        const fullURL = getCloudinaryPath(currentFileName);
+        
         try {
             await new Promise((resolve, reject) => {
                 const img = new Image();
@@ -281,40 +299,34 @@ window.openPreview = async (index) => {
                     qImg.src = img.src;
                     qImg.className = "preview-img";
                     qImg.style.width = "100%";
+                    qImg.style.marginBottom = "10px";
                     modalImages.appendChild(qImg);
 
-                    // Load MS ONLY if NOT Econ
+                    // Load Mark Scheme if not Econ
                     if (!isEcon) {
-                        const msPath = fullPath.replace('_qp_', '_ms_');
+                        const msFileName = currentFileName.replace('_qp_', '_ms_');
+                        const msURL = getCloudinaryPath(msFileName);
                         const mImg = new Image();
                         mImg.onload = () => {
                             const msDisplay = document.createElement('img');
                             msDisplay.src = mImg.src;
                             msDisplay.className = "preview-ms-img";
                             msDisplay.style.width = "100%";
+                            msDisplay.style.marginBottom = "10px";
                             modalMS.appendChild(msDisplay);
                         };
-                        mImg.src = msPath;
+                        mImg.src = msURL;
                     }
                     resolve();
                 };
-                img.onerror = () => {
-                    const lowImg = new Image();
-                    lowImg.onload = () => {
-                        if (!foundAnything) { modalImages.innerHTML = ''; foundAnything = true; }
-                        modalImages.appendChild(lowImg);
-                        resolve();
-                    };
-                    lowImg.onerror = reject;
-                    lowImg.src = fullPath.toLowerCase();
-                };
-                img.src = fullPath;
+                img.onerror = reject;
+                img.src = fullURL;
             });
-        } catch (e) { /* Part not found */ }
+        } catch (e) { /* Part not found, skip to next */ }
     }
 
     if (!foundAnything) {
-        modalImages.innerHTML = `<div class="error" style="padding:20px; color:#ef4444;">Image Not Found: ${qFileBase}.PNG</div>`;
+        modalImages.innerHTML = `<div class="error" style="padding:20px; color:#ef4444;">Question Image Not Found in Cloudinary Folders.</div>`;
     }
 
     previewModal.style.display = "block";
