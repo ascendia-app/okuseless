@@ -393,9 +393,34 @@ function renderUI() {
   const mcqButtons = document.getElementById('mcq-buttons');
   const marksEntry = document.getElementById('headerMarkEntry');
   const msBtn = document.getElementById('markSchemeBtn');
+  const mf19Btn = document.getElementById('toggleMF19Btn');
+
+  const isMath = subCode === "9709"; // Only true for Math
 
   const subCode = subjectSelect.value;
   const isEconMCQ = subCode === "9708";
+if (mf19Btn) {
+    // Show only for Math, hide for Psychology (9990) and Economics (9708)
+    mf19Btn.style.display = isMath ? "inline-flex" : "none";
+  }
+
+  if (isEconMCQ) {
+    // --- ECONOMICS MODE ---
+    if (mcqWrapper) mcqWrapper.style.display = "block";
+    if (marksEntry) marksEntry.style.display = "none";
+    
+    // ... (Keep your MCQ button/Show Answer logic here) ...
+
+  } else {
+    // --- MATH / PSYCH MODE ---
+    if (mcqWrapper) mcqWrapper.style.display = "none";
+    if (marksEntry) marksEntry.style.display = "flex";
+
+    if (msBtn && markSchemeViewer) {
+      // ... (Keep your Mark Scheme toggle logic here) ...
+    }
+  }
+  
 
   if (isEconMCQ) {
     if (mcqWrapper) mcqWrapper.style.display = "block";
