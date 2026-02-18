@@ -267,19 +267,33 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 function getCloudinaryPath(fileName) {
     if (!fileName) return "";
-    if (fileName.includes('http')) return fileName.trim(); // Already a full URL
-
-    const parts = fileName.split('_'); 
-    // parts[0]=9709, parts[1]=s25, parts[2]=qp, parts[3]=32
-    const subject = parts[0];
-    const series = parts[1];
-    const type = parts[2];
-    const version = parts[3];
-
-    const base = "qbyq_images";
     
-    // This builds: https://res.cloudinary.com/daiieadws/image/upload/qbyq_images/9709/s25/qp/32/9709_s25_qp_32_q1a
-    return `https://res.cloudinary.com/daiieadws/image/upload/${base}/${subject}/${series}/${type}/${version}/${fileName.trim()}`;
+    // 1. Clean the input
+    const cleanName = fileName.trim().replace(/[\n\r]/g, "");
+    
+    // If it's already a full URL, just return it
+    if (cleanName.includes('http')) return cleanName;
+
+    // 2. Ensure it has an extension (default to .png if missing)
+    const finalFileName = cleanName.includes('.') ? cleanName : `${cleanName}.png`;
+
+    // 3. Extract parts for the folder path
+    const parts = cleanName.split('_'); 
+    
+    // If the filename doesn't have at least 4 parts, it's not following the folder pattern
+    if (parts.length < 4) {
+        return `https://res.cloudinary.com/daiieadws/image/upload/f_auto,q_auto/${finalFileName}`;
+    }
+
+    const subject = parts[0]; // 9709
+    const series  = parts[1]; // s25
+    const type    = parts[2]; // qp
+    const version = parts[3]; // 32
+    const base    = "qbyq_images";
+    
+    // 4. Return the optimized folder path URL
+    // Added f_auto,q_auto to make your images load faster!
+    return `https://res.cloudinary.com/daiieadws/image/upload/f_auto,q_auto/${base}/${subject}/${series}/${type}/${version}/${finalFileName}`;
 }
 function renderQuestion() {
   if (!questions[currentIndex]) return;
